@@ -5,12 +5,12 @@
  *      1.修改键值，以防多个引用情况下，数据冲突。
  *      2.不对外暴露对象方法
  */
-define(function () {
+define('xStorage',function () {
     'use strict';
 
     var updateKey = 'ls_update';
     var metaKEY = '__ls_meta';
-    var mainKey = 'ls'
+    var mainKey = 'ls';
 
     /**
      * 接口对象
