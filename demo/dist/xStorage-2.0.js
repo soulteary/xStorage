@@ -15,12 +15,12 @@
 var xStorage;
 xStorage = function () {
   var metaKEY = '__ls_meta';
-  var mainKey = 'ls2';
-  var VERSION = '0.1.3', _storage = false, _storageSize = 0, _storageAvailable = false, _ttlTimeout = null;
+  var mainKey = 'ls';
+  var VERSION = '0.1.3', _storage = false, _storage_size = 0, _storage_available = false, _ttl_timeout = null;
   function _init() {
     window.localStorage.setItem('__simpleStorageInitTest', 'tmpval');
     window.localStorage.removeItem('__simpleStorageInitTest');
-    _loadStorage();
+    _load_storage();
     _handleTTL();
     _setupUpdateObserver();
     if ('addEventListener' in window) {
@@ -30,7 +30,7 @@ xStorage = function () {
         }
       }, false);
     }
-    _storageAvailable = true;
+    _storage_available = true;
   }
   function _setupUpdateObserver() {
     if ('addEventListener' in window) {
@@ -41,38 +41,38 @@ xStorage = function () {
   }
   function _reloadData() {
     try {
-      _loadStorage();
+      _load_storage();
     } catch (E) {
-      _storageAvailable = false;
+      _storage_available = false;
       return;
     }
     _handleTTL();
   }
-  function _loadStorage() {
+  function _load_storage() {
     var source = localStorage.getItem(mainKey);
     try {
       _storage = JSON.parse(source) || {};
     } catch (E) {
       _storage = {};
     }
-    _storageSize = _getStorageSize();
+    _storage_size = _get_storage_size();
   }
   function _save() {
     try {
       localStorage.setItem(mainKey, JSON.stringify(_storage));
-      _storageSize = _getStorageSize();
+      _storage_size = _get_storage_size();
     } catch (E) {
       return E;
     }
     return true;
   }
-  function _getStorageSize() {
+  function _get_storage_size() {
     var source = localStorage.getItem(mainKey);
     return source ? String(source).length : 0;
   }
   function _handleTTL() {
     var curtime, i, len, expire, keys, nextExpire = Infinity, expiredKeysCount = 0;
-    clearTimeout(_ttlTimeout);
+    clearTimeout(_ttl_timeout);
     if (!_storage || !_storage[metaKEY] || !_storage[metaKEY].TTL) {
       return;
     }
@@ -92,7 +92,7 @@ xStorage = function () {
       }
     }
     if (nextExpire != Infinity) {
-      _ttlTimeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 2147483647));
+      _ttl_timeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 2147483647));
     }
     if (expiredKeysCount) {
       keys.splice(0, expiredKeysCount);
@@ -149,9 +149,9 @@ xStorage = function () {
         _cleanMetaObject();
       }
     }
-    clearTimeout(_ttlTimeout);
+    clearTimeout(_ttl_timeout);
     if (_storage && _storage[metaKEY] && _storage[metaKEY].TTL && _storage[metaKEY].TTL.keys.length) {
-      _ttlTimeout = setTimeout(_handleTTL, Math.min(Math.max(_storage[metaKEY].TTL.expire[_storage[metaKEY].TTL.keys[0]] - curtime, 0), 2147483647));
+      _ttl_timeout = setTimeout(_handleTTL, Math.min(Math.max(_storage[metaKEY].TTL.expire[_storage[metaKEY].TTL.keys[0]] - curtime, 0), 2147483647));
     }
     return true;
   }
@@ -183,7 +183,7 @@ xStorage = function () {
   return {
     version: VERSION,
     canUse: function () {
-      return !!_storageAvailable;
+      return !!_storage_available;
     },
     set: function (key, value, options) {
       if (key == metaKEY) {
@@ -273,7 +273,7 @@ xStorage = function () {
       return index;
     },
     storageSize: function () {
-      return _storageSize;
+      return _storage_size;
     }
   };
 }();

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Global</title>
+    <script src="dist/xStorage-1.0.min.js"></script>
+</head>
+<body>
+<p>There're something in your devtool console panel.</p>
+<script>
+    var store = window.xStorage;
+
+    store.set('test-key', 'test-value', {TTL: 1000});
+
+    console.log(store.get('test-key'));
+
+    setTimeout(function () {
+        console.log(store.get('test-key'));
+    }, 1500);
+
+    store.set('test-key2','value2');
+    store.deleteKey('test-key2');
+    console.log(store.index());
+
+</script>
+</body>
+</html>

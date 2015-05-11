@@ -1,8 +1,11 @@
+/* jshint browser: true */
+/* global define: false */
+
 define(function () {
     'use strict';
 
-    /* jshint browser: true */
-    /* global define: false */
+    var metaKEY = '__ls_meta';
+    var mainKey = 'ls2';
 
     var
         VERSION            = '0.1.3',
@@ -11,11 +14,11 @@ define(function () {
         _storage           = false,
 
         /* How much space does the storage take */
-        _storage_size      = 0,
+        _storageSize      = 0,
 
-        _storage_available = false,
+        _storageAvailable = false,
 
-        _ttl_timeout       = null;
+        _ttlTimeout       = null;
 
     // This method might throw as it touches localStorage and doing so
     // can be prohibited in some environments
@@ -27,7 +30,7 @@ define(function () {
         window.localStorage.removeItem('__simpleStorageInitTest');
 
         // Load data from storage
-        _load_storage();
+        _loadStorage();
 
         // remove dead keys
         _handleTTL();
@@ -44,7 +47,7 @@ define(function () {
             }, false);
         }
 
-        _storage_available = true;
+        _storageAvailable = true;
     }
 
     /**
@@ -63,16 +66,16 @@ define(function () {
      */
     function _reloadData () {
         try {
-            _load_storage();
+            _loadStorage();
         } catch (E) {
-            _storage_available = false;
+            _storageAvailable = false;
             return;
         }
         _handleTTL();
     }
 
-    function _load_storage () {
-        var source = localStorage.getItem('simpleStorage');
+    function _loadStorage () {
+        var source = localStorage.getItem(mainKey);
 
         try {
             _storage = JSON.parse(source) || {};
@@ -80,21 +83,21 @@ define(function () {
             _storage = {};
         }
 
-        _storage_size = _get_storage_size();
+        _storageSize = _getStorageSize();
     }
 
     function _save () {
         try {
-            localStorage.setItem('simpleStorage', JSON.stringify(_storage));
-            _storage_size = _get_storage_size();
+            localStorage.setItem(mainKey, JSON.stringify(_storage));
+            _storageSize = _getStorageSize();
         } catch (E) {
             return E;
         }
         return true;
     }
 
-    function _get_storage_size () {
-        var source = localStorage.getItem('simpleStorage');
+    function _getStorageSize () {
+        var source = localStorage.getItem(mainKey);
         return source ? String(source).length : 0;
     }
 
@@ -102,15 +105,15 @@ define(function () {
         var curtime, i, len, expire, keys, nextExpire = Infinity,
             expiredKeysCount                          = 0;
 
-        clearTimeout(_ttl_timeout);
+        clearTimeout(_ttlTimeout);
 
-        if (!_storage || !_storage.__simpleStorage_meta || !_storage.__simpleStorage_meta.TTL) {
+        if (!_storage || !_storage[metaKEY] || !_storage[metaKEY].TTL) {
             return;
         }
 
         curtime = +new Date();
-        keys = _storage.__simpleStorage_meta.TTL.keys || [];
-        expire = _storage.__simpleStorage_meta.TTL.expire || {};
+        keys = _storage[metaKEY].TTL.keys || [];
+        expire = _storage[metaKEY].TTL.expire || {};
 
         for (i = 0, len = keys.length; i < len; i++) {
             if (expire[keys[i]] <= curtime) {
@@ -127,7 +130,7 @@ define(function () {
 
         // set next check
         if (nextExpire != Infinity) {
-            _ttl_timeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 0x7FFFFFFF));
+            _ttlTimeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 0x7FFFFFFF));
         }
 
         // remove expired from TTL list and save changes
@@ -150,32 +153,32 @@ define(function () {
             // If key exists, set TTL
             if (_storage.hasOwnProperty(key)) {
 
-                if (!_storage.__simpleStorage_meta) {
-                    _storage.__simpleStorage_meta = {};
+                if (!_storage[metaKEY]) {
+                    _storage[metaKEY] = {};
                 }
 
-                if (!_storage.__simpleStorage_meta.TTL) {
-                    _storage.__simpleStorage_meta.TTL = {
+                if (!_storage[metaKEY].TTL) {
+                    _storage[metaKEY].TTL = {
                         expire: {},
                         keys  : []
                     };
                 }
 
-                _storage.__simpleStorage_meta.TTL.expire[key] = curtime + ttl;
+                _storage[metaKEY].TTL.expire[key] = curtime + ttl;
 
                 // find the expiring key in the array and remove it and all before it (because of sort)
-                if (_storage.__simpleStorage_meta.TTL.expire.hasOwnProperty(key)) {
-                    for (i = 0, len = _storage.__simpleStorage_meta.TTL.keys.length; i < len; i++) {
-                        if (_storage.__simpleStorage_meta.TTL.keys[i] == key) {
-                            _storage.__simpleStorage_meta.TTL.keys.splice(i);
+                if (_storage[metaKEY].TTL.expire.hasOwnProperty(key)) {
+                    for (i = 0, len = _storage[metaKEY].TTL.keys.length; i < len; i++) {
+                        if (_storage[metaKEY].TTL.keys[i] == key) {
+                            _storage[metaKEY].TTL.keys.splice(i);
                         }
                     }
                 }
 
                 // add key to keys array preserving sort (soonest first)
-                for (i = 0, len = _storage.__simpleStorage_meta.TTL.keys.length; i < len; i++) {
-                    if (_storage.__simpleStorage_meta.TTL.expire[_storage.__simpleStorage_meta.TTL.keys[i]] > (curtime + ttl)) {
-                        _storage.__simpleStorage_meta.TTL.keys.splice(i, 0, key);
+                for (i = 0, len = _storage[metaKEY].TTL.keys.length; i < len; i++) {
+                    if (_storage[metaKEY].TTL.expire[_storage[metaKEY].TTL.keys[i]] > (curtime + ttl)) {
+                        _storage[metaKEY].TTL.keys.splice(i, 0, key);
                         added = true;
                         break;
                     }
@@ -183,20 +186,20 @@ define(function () {
 
                 // if not added in previous loop, add here
                 if (!added) {
-                    _storage.__simpleStorage_meta.TTL.keys.push(key);
+                    _storage[metaKEY].TTL.keys.push(key);
                 }
             } else {
                 return false;
             }
         } else {
             // Remove TTL if set
-            if (_storage && _storage.__simpleStorage_meta && _storage.__simpleStorage_meta.TTL) {
+            if (_storage && _storage[metaKEY] && _storage[metaKEY].TTL) {
 
-                if (_storage.__simpleStorage_meta.TTL.expire.hasOwnProperty(key)) {
-                    delete _storage.__simpleStorage_meta.TTL.expire[key];
-                    for (i = 0, len = _storage.__simpleStorage_meta.TTL.keys.length; i < len; i++) {
-                        if (_storage.__simpleStorage_meta.TTL.keys[i] == key) {
-                            _storage.__simpleStorage_meta.TTL.keys.splice(i, 1);
+                if (_storage[metaKEY].TTL.expire.hasOwnProperty(key)) {
+                    delete _storage[metaKEY].TTL.expire[key];
+                    for (i = 0, len = _storage[metaKEY].TTL.keys.length; i < len; i++) {
+                        if (_storage[metaKEY].TTL.keys[i] == key) {
+                            _storage[metaKEY].TTL.keys.splice(i, 1);
                             break;
                         }
                     }
@@ -207,9 +210,9 @@ define(function () {
         }
 
         // schedule next TTL check
-        clearTimeout(_ttl_timeout);
-        if (_storage && _storage.__simpleStorage_meta && _storage.__simpleStorage_meta.TTL && _storage.__simpleStorage_meta.TTL.keys.length) {
-            _ttl_timeout = setTimeout(_handleTTL, Math.min(Math.max(_storage.__simpleStorage_meta.TTL.expire[_storage.__simpleStorage_meta.TTL.keys[0]] - curtime, 0), 0x7FFFFFFF));
+        clearTimeout(_ttlTimeout);
+        if (_storage && _storage[metaKEY] && _storage[metaKEY].TTL && _storage[metaKEY].TTL.keys.length) {
+            _ttlTimeout = setTimeout(_handleTTL, Math.min(Math.max(_storage[metaKEY].TTL.expire[_storage[metaKEY].TTL.keys[0]] - curtime, 0), 0x7FFFFFFF));
         }
 
         return true;
@@ -220,26 +223,26 @@ define(function () {
             hasProperties = false,
             i;
 
-        if (!_storage || !_storage.__simpleStorage_meta) {
+        if (!_storage || !_storage[metaKEY]) {
             return updated;
         }
 
         // If nothing to TTL, remove the object
-        if (_storage.__simpleStorage_meta.TTL && !_storage.__simpleStorage_meta.TTL.keys.length) {
-            delete _storage.__simpleStorage_meta.TTL;
+        if (_storage[metaKEY].TTL && !_storage[metaKEY].TTL.keys.length) {
+            delete _storage[metaKEY].TTL;
             updated = true;
         }
 
         // If meta object is empty, remove it
-        for (i in _storage.__simpleStorage_meta) {
-            if (_storage.__simpleStorage_meta.hasOwnProperty(i)) {
+        for (i in _storage[metaKEY]) {
+            if (_storage[metaKEY].hasOwnProperty(i)) {
                 hasProperties = true;
                 break;
             }
         }
 
         if (!hasProperties) {
-            delete _storage.__simpleStorage_meta;
+            delete _storage[metaKEY];
             updated = true;
         }
 
@@ -258,11 +261,11 @@ define(function () {
         version: VERSION,
 
         canUse: function () {
-            return !!_storage_available;
+            return !!_storageAvailable;
         },
 
         set: function (key, value, options) {
-            if (key == '__simpleStorage_meta') {
+            if (key == metaKEY) {
                 return false;
             }
 
@@ -296,7 +299,7 @@ define(function () {
                 return false;
             }
 
-            if (_storage.hasOwnProperty(key) && key != '__simpleStorage_meta') {
+            if (_storage.hasOwnProperty(key) && key != metaKEY) {
                 // TTL value for an existing key is either a positive number or an Infinity
                 if (this.getTTL(key)) {
                     return _storage[key];
@@ -339,12 +342,12 @@ define(function () {
             }
 
             if (_storage.hasOwnProperty(key)) {
-                if (_storage.__simpleStorage_meta &&
-                    _storage.__simpleStorage_meta.TTL &&
-                    _storage.__simpleStorage_meta.TTL.expire &&
-                    _storage.__simpleStorage_meta.TTL.expire.hasOwnProperty(key)) {
+                if (_storage[metaKEY] &&
+                    _storage[metaKEY].TTL &&
+                    _storage[metaKEY].TTL.expire &&
+                    _storage[metaKEY].TTL.expire.hasOwnProperty(key)) {
 
-                    ttl = Math.max(_storage.__simpleStorage_meta.TTL.expire[key] - (+new Date()) || 0, 0);
+                    ttl = Math.max(_storage[metaKEY].TTL.expire[key] - (+new Date()) || 0, 0);
 
                     return ttl || false;
                 } else {
@@ -362,7 +365,7 @@ define(function () {
 
             _storage = {};
             try {
-                localStorage.removeItem('simpleStorage');
+                localStorage.removeItem(mainKey);
                 return true;
             } catch (E) {
                 return E;
@@ -377,7 +380,7 @@ define(function () {
             var index = [],
                 i;
             for (i in _storage) {
-                if (_storage.hasOwnProperty(i) && i != '__simpleStorage_meta') {
+                if (_storage.hasOwnProperty(i) && i != metaKEY) {
                     index.push(i);
                 }
             }
@@ -385,7 +388,7 @@ define(function () {
         },
 
         storageSize: function () {
-            return _storage_size;
+            return _storageSize;
         }
     };
 });
