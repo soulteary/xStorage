@@ -8,6 +8,9 @@
     }
 }(this, function () {
     'use strict';
+
+    var _xStorgeObj = window.xStorage;
+
 //WRAPPER
 var xStorage;
 xStorage = function () {
@@ -274,5 +277,19 @@ xStorage = function () {
 }();
 
 //WRAPPER
+
+    xStorage.noConflict = function() {
+        delete window.xStorage;
+
+        if (_xStorgeObj) {
+            window.xStorage = _xStorgeObj;
+        }
+        return this;
+    }
+
+    if(!_xStorgeObj){
+        window.xStorage = xStorage;
+    }
+
     return xStorage;
 }));

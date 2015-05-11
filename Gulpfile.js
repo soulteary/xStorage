@@ -11,10 +11,16 @@ var rm = require('gulp-rm');
 var wrap = require("gulp-wrap");
 var fs = require('fs');
 var replace = require('gulp-replace');
+var lintAll = require('gulp-lint-everything')({jshint: ".jshintrc"});
+
 
 gulp.task("default", ["demo:sync"], function () {});
 
-gulp.task("scripts:build-legcy", function () {
+gulp.task("scripts:lint", function () {
+    return lintAll("./src/**/*.js");
+});
+
+gulp.task("scripts:build-legcy", ["scripts:lint"], function () {
     return gulp.src("./src/xStorage-1.0.js")
         .pipe(concat("xStorage.js"))
         .pipe(amdOptimize("xStorage"))
@@ -29,7 +35,7 @@ gulp.task("scripts:build-legcy", function () {
         .pipe(gulp.dest("./dist"));
 });
 
-gulp.task("scripts:build-trunk", function () {
+gulp.task("scripts:build-trunk", ["scripts:lint"],function () {
     return gulp.src("./src/xStorage-2.0.js")
         .pipe(concat("xStorage.js"))
         .pipe(amdOptimize("xStorage"))

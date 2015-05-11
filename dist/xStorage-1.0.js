@@ -8,6 +8,9 @@
     }
 }(this, function () {
     'use strict';
+
+    var _xStorgeObj = window.xStorage;
+
 //WRAPPER
 var xStorage;
 xStorage = function () {
@@ -26,7 +29,7 @@ xStorage = function () {
     if (typeof JSON.parse !== 'function' || typeof JSON.stringify !== 'function') {
       throw new Error('No JSON support found, include //cdnjs.cloudflare.com/ajax/libs/json2/20110223/json2.js to page');
     }
-    var _storage = {}, _storage_service = {}, _storage_elm = null, _storage_size = 0, _backend = false, _observers = {}, _observer_timeout = false, _observer_update = 0, _pubsub_observers = {}, _pubsub_last = +new Date(), _ttl_timeout, _XMLService = {
+    var _storage = {}, _storageService = {}, _storageElm = null, _storageSize = 0, _backend = false, _observers = {}, _observerTimeout = false, _observerUpdate = 0, _pubsubObservers = {}, _pubsubLast = +new Date(), _ttlTimeout, _XMLService = {
         isXML: function (elm) {
           var documentElement = (elm ? elm.ownerDocument || elm : 0).documentElement;
           return documentElement ? documentElement.nodeName !== 'HTML' : false;
@@ -46,21 +49,21 @@ xStorage = function () {
           return false;
         },
         decode: function (xmlString) {
-          var dom_parser = 'DOMParser' in window && new DOMParser().parseFromString || window.ActiveXObject && function (_xmlString) {
-              var xml_doc = new ActiveXObject('Microsoft.XMLDOM');
-              xml_doc.async = 'false';
-              xml_doc.loadXML(_xmlString);
-              return xml_doc;
+          var domParser = 'DOMParser' in window && new DOMParser().parseFromString || window.ActiveXObject && function (_xmlString) {
+              var xmlDoc = new ActiveXObject('Microsoft.XMLDOM');
+              xmlDoc.async = 'false';
+              xmlDoc.loadXML(_xmlString);
+              return xmlDoc;
             }, resultXML;
-          if (!dom_parser) {
+          if (!domParser) {
             return false;
           }
-          resultXML = dom_parser.call('DOMParser' in window && new DOMParser() || window, xmlString, 'text/xml');
+          resultXML = domParser.call('DOMParser' in window && new DOMParser() || window, xmlString, 'text/xml');
           return this.isXML(resultXML) ? resultXML : false;
         }
       };
     _storage[metaKEY] = { CRC32: {} };
-    _storage_service[mainKey] = '{}';
+    _storageService[mainKey] = '{}';
     function _init() {
       var localStorageReallyWorks = false;
       if ('localStorage' in window) {
@@ -74,9 +77,9 @@ xStorage = function () {
       if (localStorageReallyWorks) {
         try {
           if (window.localStorage) {
-            _storage_service = window.localStorage;
+            _storageService = window.localStorage;
             _backend = 'localStorage';
-            _observer_update = _storage_service[updateKey];
+            _observerUpdate = _storageService[updateKey];
           }
         } catch (E3) {
         }
@@ -84,44 +87,44 @@ xStorage = function () {
         try {
           if (window.globalStorage) {
             if (window.location.hostname == 'localhost') {
-              _storage_service = window.globalStorage['localhost.localdomain'];
+              _storageService = window.globalStorage['localhost.localdomain'];
             } else {
-              _storage_service = window.globalStorage[window.location.hostname];
+              _storageService = window.globalStorage[window.location.hostname];
             }
             _backend = 'globalStorage';
-            _observer_update = _storage_service[updateKey];
+            _observerUpdate = _storageService[updateKey];
           }
         } catch (E4) {
         }
       } else {
-        _storage_elm = document.createElement('link');
-        if (_storage_elm.addBehavior) {
-          _storage_elm.style.behavior = 'url(#default#userData)';
-          document.getElementsByTagName('head')[0].appendChild(_storage_elm);
+        _storageElm = document.createElement('link');
+        if (_storageElm.addBehavior) {
+          _storageElm.style.behavior = 'url(#default#userData)';
+          document.getElementsByTagName('head')[0].appendChild(_storageElm);
           try {
-            _storage_elm.load(mainKey);
+            _storageElm.load(mainKey);
           } catch (E) {
-            _storage_elm.setAttribute(mainKey, '{}');
-            _storage_elm.save(mainKey);
-            _storage_elm.load(mainKey);
+            _storageElm.setAttribute(mainKey, '{}');
+            _storageElm.save(mainKey);
+            _storageElm.load(mainKey);
           }
           var data = '{}';
           try {
-            data = _storage_elm.getAttribute(mainKey);
+            data = _storageElm.getAttribute(mainKey);
           } catch (E5) {
           }
           try {
-            _observer_update = _storage_elm.getAttribute(updateKey);
+            _observerUpdate = _storageElm.getAttribute(updateKey);
           } catch (E6) {
           }
-          _storage_service[mainKey] = data;
+          _storageService[mainKey] = data;
           _backend = 'userDataBehavior';
         } else {
-          _storage_elm = null;
+          _storageElm = null;
           return;
         }
       }
-      _load_storage();
+      _loadStorage();
       _handleTTL();
       _setupObserver();
       _handlePubSub();
@@ -136,18 +139,18 @@ xStorage = function () {
     function _reloadData() {
       var data = '{}';
       if (_backend == 'userDataBehavior') {
-        _storage_elm.load(mainKey);
+        _storageElm.load(mainKey);
         try {
-          data = _storage_elm.getAttribute(mainKey);
+          data = _storageElm.getAttribute(mainKey);
         } catch (E5) {
         }
         try {
-          _observer_update = _storage_elm.getAttribute(updateKey);
+          _observerUpdate = _storageElm.getAttribute(updateKey);
         } catch (E6) {
         }
-        _storage_service[mainKey] = data;
+        _storageService[mainKey] = data;
       }
-      _load_storage();
+      _loadStorage();
       _handleTTL();
       _handlePubSub();
     }
@@ -164,19 +167,19 @@ xStorage = function () {
     }
     function _storageObserver() {
       var updateTime;
-      clearTimeout(_observer_timeout);
-      _observer_timeout = setTimeout(function () {
+      clearTimeout(_observerTimeout);
+      _observerTimeout = setTimeout(function () {
         if (_backend == 'localStorage' || _backend == 'globalStorage') {
-          updateTime = _storage_service[updateKey];
+          updateTime = _storageService[updateKey];
         } else if (_backend == 'userDataBehavior') {
-          _storage_elm.load(mainKey);
+          _storageElm.load(mainKey);
           try {
-            updateTime = _storage_elm.getAttribute(updateKey);
+            updateTime = _storageElm.getAttribute(updateKey);
           } catch (E5) {
           }
         }
-        if (updateTime && updateTime != _observer_update) {
-          _observer_update = updateTime;
+        if (updateTime && updateTime != _observerUpdate) {
+          _observerUpdate = updateTime;
           _checkUpdatedKeys();
         }
       }, 25);
@@ -236,27 +239,27 @@ xStorage = function () {
       var updateTime = (+new Date()).toString();
       if (_backend == 'localStorage' || _backend == 'globalStorage') {
         try {
-          _storage_service[updateKey] = updateTime;
+          _storageService[updateKey] = updateTime;
         } catch (E8) {
           _backend = false;
         }
       } else if (_backend == 'userDataBehavior') {
-        _storage_elm.setAttribute(updateKey, updateTime);
-        _storage_elm.save(mainKey);
+        _storageElm.setAttribute(updateKey, updateTime);
+        _storageElm.save(mainKey);
       }
       _storageObserver();
     }
-    function _load_storage() {
-      if (_storage_service[mainKey]) {
+    function _loadStorage() {
+      if (_storageService[mainKey]) {
         try {
-          _storage = JSON.parse(String(_storage_service[mainKey]));
+          _storage = JSON.parse(String(_storageService[mainKey]));
         } catch (E6) {
-          _storage_service[mainKey] = '{}';
+          _storageService[mainKey] = '{}';
         }
       } else {
-        _storage_service[mainKey] = '{}';
+        _storageService[mainKey] = '{}';
       }
-      _storage_size = _storage_service[mainKey] ? String(_storage_service[mainKey]).length : 0;
+      _storageSize = _storageService[mainKey] ? String(_storageService[mainKey]).length : 0;
       if (!_storage[metaKEY]) {
         _storage[metaKEY] = {};
       }
@@ -267,12 +270,12 @@ xStorage = function () {
     function _save() {
       _dropOldEvents();
       try {
-        _storage_service[mainKey] = JSON.stringify(_storage);
-        if (_storage_elm) {
-          _storage_elm.setAttribute(mainKey, _storage_service[mainKey]);
-          _storage_elm.save(mainKey);
+        _storageService[mainKey] = JSON.stringify(_storage);
+        if (_storageElm) {
+          _storageElm.setAttribute(mainKey, _storageService[mainKey]);
+          _storageElm.save(mainKey);
         }
-        _storage_size = _storage_service[mainKey] ? String(_storage_service[mainKey]).length : 0;
+        _storageSize = _storageService[mainKey] ? String(_storageService[mainKey]).length : 0;
       } catch (E7) {
       }
     }
@@ -287,7 +290,7 @@ xStorage = function () {
     }
     function _handleTTL() {
       var curtime, i, TTL, CRC32, nextExpire = Infinity, changed = false, deleted = [];
-      clearTimeout(_ttl_timeout);
+      clearTimeout(_ttlTimeout);
       if (!_storage[metaKEY] || typeof _storage[metaKEY].TTL != 'object') {
         return;
       }
@@ -308,7 +311,7 @@ xStorage = function () {
         }
       }
       if (nextExpire != Infinity) {
-        _ttl_timeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 2147483647));
+        _ttlTimeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 2147483647));
       }
       if (changed) {
         _save();
@@ -321,10 +324,10 @@ xStorage = function () {
       if (!_storage[metaKEY].PubSub) {
         return;
       }
-      var pubelm, _pubsubCurrent = _pubsub_last, needFired = [];
+      var pubelm, _pubsubCurrent = _pubsubLast, needFired = [];
       for (i = len = _storage[metaKEY].PubSub.length - 1; i >= 0; i--) {
         pubelm = _storage[metaKEY].PubSub[i];
-        if (pubelm[0] > _pubsub_last) {
+        if (pubelm[0] > _pubsubLast) {
           _pubsubCurrent = pubelm[0];
           needFired.unshift(pubelm);
         }
@@ -332,13 +335,13 @@ xStorage = function () {
       for (i = needFired.length - 1; i >= 0; i--) {
         _fireSubscribers(needFired[i][1], needFired[i][2]);
       }
-      _pubsub_last = _pubsubCurrent;
+      _pubsubLast = _pubsubCurrent;
     }
     function _fireSubscribers(channel, payload) {
-      if (_pubsub_observers[channel]) {
-        for (var i = 0, len = _pubsub_observers[channel].length; i < len; i++) {
+      if (_pubsubObservers[channel]) {
+        for (var i = 0, len = _pubsubObservers[channel].length; i < len; i++) {
           try {
-            _pubsub_observers[channel][i](channel, JSON.parse(JSON.stringify(payload)));
+            _pubsubObservers[channel][i](channel, JSON.parse(JSON.stringify(payload)));
           } catch (E) {
           }
         }
@@ -374,7 +377,7 @@ xStorage = function () {
       _save();
       _publishChange();
     }
-    function murmurhash2_32_gc(str, seed) {
+    function MurmurHash2(str, seed) {
       var l = str.length, h = seed ^ l, i = 0, k;
       while (l >= 4) {
         k = str.charCodeAt(i) & 255 | (str.charCodeAt(++i) & 255) << 8 | (str.charCodeAt(++i) & 255) << 16 | (str.charCodeAt(++i) & 255) << 24;
@@ -410,7 +413,7 @@ xStorage = function () {
         }
         if (_XMLService.isXML(value)) {
           value = {
-            _is_xml: true,
+            _isXml: true,
             xml: _XMLService.encode(value)
           };
         } else if (typeof value == 'function') {
@@ -419,7 +422,7 @@ xStorage = function () {
           value = JSON.parse(JSON.stringify(value));
         }
         _storage[key] = value;
-        _storage[metaKEY].CRC32[key] = '2.' + murmurhash2_32_gc(JSON.stringify(value), 2538058380);
+        _storage[metaKEY].CRC32[key] = '2.' + new MurmurHash2(JSON.stringify(value), 2538058380);
         this.setTTL(key, options.TTL || 0);
         _fireObservers(key, 'updated');
         return value;
@@ -427,7 +430,7 @@ xStorage = function () {
       get: function (key, def) {
         _checkKey(key);
         if (key in _storage) {
-          if (_storage[key] && typeof _storage[key] == 'object' && _storage[key]._is_xml) {
+          if (_storage[key] && typeof _storage[key] == 'object' && _storage[key]._isXml) {
             return _XMLService.decode(_storage[key].xml);
           } else {
             return _storage[key];
@@ -503,7 +506,7 @@ xStorage = function () {
         return index;
       },
       storageSize: function () {
-        return _storage_size;
+        return _storageSize;
       },
       currentBackend: function () {
         return _backend;
@@ -538,10 +541,10 @@ xStorage = function () {
         if (!channel) {
           throw new TypeError('Channel not defined');
         }
-        if (!_pubsub_observers[channel]) {
-          _pubsub_observers[channel] = [];
+        if (!_pubsubObservers[channel]) {
+          _pubsubObservers[channel] = [];
         }
-        _pubsub_observers[channel].push(callback);
+        _pubsubObservers[channel].push(callback);
       },
       publish: function (channel, payload) {
         channel = (channel || '').toString();
@@ -560,5 +563,19 @@ xStorage = function () {
 }();
 
 //WRAPPER
+
+    xStorage.noConflict = function() {
+        delete window.xStorage;
+
+        if (_xStorgeObj) {
+            window.xStorage = _xStorgeObj;
+        }
+        return this;
+    }
+
+    if(!_xStorgeObj){
+        window.xStorage = xStorage;
+    }
+
     return xStorage;
 }));

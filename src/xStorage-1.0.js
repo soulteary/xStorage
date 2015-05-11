@@ -5,6 +5,7 @@
  *      1.修改键值，以防多个引用情况下，数据冲突。
  *      2.不对外暴露对象方法
  */
+/* global define */
 define(function () {
     'use strict';
 
@@ -54,17 +55,17 @@ define(function () {
 
             /* Actual browser storage (localStorage or globalStorage['domain']) */
 
-            _storage_service  = {},
+            _storageService  = {},
 
 
             /* DOM element for older IE versions, holds userData behavior */
 
-            _storage_elm      = null,
+            _storageElm      = null,
 
 
             /* How much space does the storage take */
 
-            _storage_size     = 0,
+            _storageSize     = 0,
 
 
             /* which backend is currently used */
@@ -79,27 +80,27 @@ define(function () {
 
             /* timeout to wait after onchange event */
 
-            _observer_timeout = false,
+            _observerTimeout = false,
 
 
             /* last update time */
 
-            _observer_update  = 0,
+            _observerUpdate  = 0,
 
 
             /* pubsub observers */
 
-            _pubsub_observers = {},
+            _pubsubObservers = {},
 
 
             /* skip published items older than current timestamp */
 
-            _pubsub_last      = +new Date(),
+            _pubsubLast      = +new Date(),
 
 
             /* Next check for TTL */
 
-            _ttl_timeout,
+            _ttlTimeout,
 
 
             /**
@@ -146,18 +147,18 @@ define(function () {
                  * loosely based on http://outwestmedia.com/jquery-plugins/xmldom/
                  */
                 decode: function (xmlString) {
-                    var dom_parser = ('DOMParser' in window && (new DOMParser()).parseFromString) || (window.ActiveXObject &&
+                    var domParser = ('DOMParser' in window && (new DOMParser()).parseFromString) || (window.ActiveXObject &&
                             function (_xmlString) {
-                                var xml_doc = new ActiveXObject('Microsoft.XMLDOM');
-                                xml_doc.async = 'false';
-                                xml_doc.loadXML(_xmlString);
-                                return xml_doc;
+                                var xmlDoc = new ActiveXObject('Microsoft.XMLDOM');
+                                xmlDoc.async = 'false';
+                                xmlDoc.loadXML(_xmlString);
+                                return xmlDoc;
                             }),
                         resultXML;
-                    if (!dom_parser) {
+                    if (!domParser) {
                         return false;
                     }
-                    resultXML = dom_parser.call('DOMParser' in window && (new DOMParser()) || window, xmlString, 'text/xml');
+                    resultXML = domParser.call('DOMParser' in window && (new DOMParser()) || window, xmlString, 'text/xml');
                     return this.isXML(resultXML) ? resultXML : false;
                 }
             };
@@ -167,7 +168,7 @@ define(function () {
             CRC32: {}
         };
 
-        _storage_service[mainKey] = '{}';
+        _storageService[mainKey] = '{}';
 
 
         ////////////////////////// PRIVATE METHODS ////////////////////////
@@ -192,9 +193,9 @@ define(function () {
             if (localStorageReallyWorks) {
                 try {
                     if (window.localStorage) {
-                        _storage_service = window.localStorage;
+                        _storageService = window.localStorage;
                         _backend = 'localStorage';
-                        _observer_update = _storage_service[updateKey];
+                        _observerUpdate = _storageService[updateKey];
                     }
                 } catch (E3) { /* Firefox fails when touching localStorage and cookies are disabled */
                 }
@@ -203,56 +204,56 @@ define(function () {
                 try {
                     if (window.globalStorage) {
                         if (window.location.hostname == 'localhost') {
-                            _storage_service = window.globalStorage['localhost.localdomain'];
+                            _storageService = window.globalStorage['localhost.localdomain'];
                         } else {
-                            _storage_service = window.globalStorage[window.location.hostname];
+                            _storageService = window.globalStorage[window.location.hostname];
                         }
                         _backend = 'globalStorage';
-                        _observer_update = _storage_service[updateKey];
+                        _observerUpdate = _storageService[updateKey];
                     }
                 } catch (E4) { /* Firefox fails when touching localStorage and cookies are disabled */
                 }
             } /* Check if browser supports userData behavior */
             else {
-                _storage_elm = document.createElement('link');
-                if (_storage_elm.addBehavior) {
+                _storageElm = document.createElement('link');
+                if (_storageElm.addBehavior) {
 
                     /* Use a DOM element to act as userData storage */
-                    _storage_elm.style.behavior = 'url(#default#userData)';
+                    _storageElm.style.behavior = 'url(#default#userData)';
 
                     /* userData element needs to be inserted into the DOM! */
-                    document.getElementsByTagName('head')[0].appendChild(_storage_elm);
+                    document.getElementsByTagName('head')[0].appendChild(_storageElm);
 
                     try {
-                        _storage_elm.load(mainKey);
+                        _storageElm.load(mainKey);
                     } catch (E) {
                         // try to reset cache
-                        _storage_elm.setAttribute(mainKey, '{}');
-                        _storage_elm.save(mainKey);
-                        _storage_elm.load(mainKey);
+                        _storageElm.setAttribute(mainKey, '{}');
+                        _storageElm.save(mainKey);
+                        _storageElm.load(mainKey);
                     }
 
                     var data = '{}';
                     try {
-                        data = _storage_elm.getAttribute(mainKey);
+                        data = _storageElm.getAttribute(mainKey);
                     } catch (E5) {
                     }
 
                     try {
-                        _observer_update = _storage_elm.getAttribute(updateKey);
+                        _observerUpdate = _storageElm.getAttribute(updateKey);
                     } catch (E6) {
                     }
 
-                    _storage_service[mainKey] = data;
+                    _storageService[mainKey] = data;
                     _backend = 'userDataBehavior';
                 } else {
-                    _storage_elm = null;
+                    _storageElm = null;
                     return;
                 }
             }
 
             // Load data from storage
-            _load_storage();
+            _loadStorage();
 
             // remove dead keys
             _handleTTL();
@@ -281,22 +282,22 @@ define(function () {
             var data = '{}';
 
             if (_backend == 'userDataBehavior') {
-                _storage_elm.load(mainKey);
+                _storageElm.load(mainKey);
 
                 try {
-                    data = _storage_elm.getAttribute(mainKey);
+                    data = _storageElm.getAttribute(mainKey);
                 } catch (E5) {
                 }
 
                 try {
-                    _observer_update = _storage_elm.getAttribute(updateKey);
+                    _observerUpdate = _storageElm.getAttribute(updateKey);
                 } catch (E6) {
                 }
 
-                _storage_service[mainKey] = data;
+                _storageService[mainKey] = data;
             }
 
-            _load_storage();
+            _loadStorage();
 
             // remove dead keys
             _handleTTL();
@@ -328,21 +329,21 @@ define(function () {
         function _storageObserver () {
             var updateTime;
             // cumulate change notifications with timeout
-            clearTimeout(_observer_timeout);
-            _observer_timeout = setTimeout(function () {
+            clearTimeout(_observerTimeout);
+            _observerTimeout = setTimeout(function () {
 
                 if (_backend == 'localStorage' || _backend == 'globalStorage') {
-                    updateTime = _storage_service[updateKey];
+                    updateTime = _storageService[updateKey];
                 } else if (_backend == 'userDataBehavior') {
-                    _storage_elm.load(mainKey);
+                    _storageElm.load(mainKey);
                     try {
-                        updateTime = _storage_elm.getAttribute(updateKey);
+                        updateTime = _storageElm.getAttribute(updateKey);
                     } catch (E5) {
                     }
                 }
 
-                if (updateTime && updateTime != _observer_update) {
-                    _observer_update = updateTime;
+                if (updateTime && updateTime != _observerUpdate) {
+                    _observerUpdate = updateTime;
                     _checkUpdatedKeys();
                 }
 
@@ -431,14 +432,14 @@ define(function () {
 
             if (_backend == 'localStorage' || _backend == 'globalStorage') {
                 try {
-                    _storage_service[updateKey] = updateTime;
+                    _storageService[updateKey] = updateTime;
                 } catch (E8) {
                     // safari private mode has been enabled after the xStorage initialization
                     _backend = false;
                 }
             } else if (_backend == 'userDataBehavior') {
-                _storage_elm.setAttribute(updateKey, updateTime);
-                _storage_elm.save(mainKey);
+                _storageElm.setAttribute(updateKey, updateTime);
+                _storageElm.save(mainKey);
             }
 
             _storageObserver();
@@ -448,17 +449,17 @@ define(function () {
          * Loads the data from the storage based on the supported mechanism
          */
 
-        function _load_storage () { /* if xStorage string is retrieved, then decode it */
-            if (_storage_service[mainKey]) {
+        function _loadStorage () { /* if xStorage string is retrieved, then decode it */
+            if (_storageService[mainKey]) {
                 try {
-                    _storage = JSON.parse(String(_storage_service[mainKey]));
+                    _storage = JSON.parse(String(_storageService[mainKey]));
                 } catch (E6) {
-                    _storage_service[mainKey] = '{}';
+                    _storageService[mainKey] = '{}';
                 }
             } else {
-                _storage_service[mainKey] = '{}';
+                _storageService[mainKey] = '{}';
             }
-            _storage_size = _storage_service[mainKey] ? String(_storage_service[mainKey]).length : 0;
+            _storageSize = _storageService[mainKey] ? String(_storageService[mainKey]).length : 0;
 
             if (!_storage[metaKEY]) {
                 _storage[metaKEY] = {};
@@ -475,13 +476,13 @@ define(function () {
         function _save () {
             _dropOldEvents(); // remove expired events
             try {
-                _storage_service[mainKey] = JSON.stringify(_storage);
+                _storageService[mainKey] = JSON.stringify(_storage);
                 // If userData is used as the storage engine, additional
-                if (_storage_elm) {
-                    _storage_elm.setAttribute(mainKey, _storage_service[mainKey]);
-                    _storage_elm.save(mainKey);
+                if (_storageElm) {
+                    _storageElm.setAttribute(mainKey, _storageService[mainKey]);
+                    _storageElm.save(mainKey);
                 }
-                _storage_size = _storage_service[mainKey] ? String(_storage_service[mainKey]).length : 0;
+                _storageSize = _storageService[mainKey] ? String(_storageService[mainKey]).length : 0;
             } catch (E7) { /* probably cache is full, nothing is saved this way*/
             }
         }
@@ -511,7 +512,7 @@ define(function () {
                 changed                            = false,
                 deleted                            = [];
 
-            clearTimeout(_ttl_timeout);
+            clearTimeout(_ttlTimeout);
 
             if (!_storage[metaKEY] || typeof _storage[metaKEY].TTL != 'object') {
                 // nothing to do here
@@ -538,7 +539,7 @@ define(function () {
 
             // set next check
             if (nextExpire != Infinity) {
-                _ttl_timeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 0x7FFFFFFF));
+                _ttlTimeout = setTimeout(_handleTTL, Math.min(nextExpire - curtime, 0x7FFFFFFF));
             }
 
             // save changes
@@ -558,12 +559,12 @@ define(function () {
             if (!_storage[metaKEY].PubSub) {
                 return;
             }
-            var pubelm, _pubsubCurrent = _pubsub_last,
+            var pubelm, _pubsubCurrent = _pubsubLast,
                 needFired              = [];
 
             for (i = len = _storage[metaKEY].PubSub.length - 1; i >= 0; i--) {
                 pubelm = _storage[metaKEY].PubSub[i];
-                if (pubelm[0] > _pubsub_last) {
+                if (pubelm[0] > _pubsubLast) {
                     _pubsubCurrent = pubelm[0];
                     needFired.unshift(pubelm);
                 }
@@ -573,7 +574,7 @@ define(function () {
                 _fireSubscribers(needFired[i][1], needFired[i][2]);
             }
 
-            _pubsub_last = _pubsubCurrent;
+            _pubsubLast = _pubsubCurrent;
         }
 
         /**
@@ -584,11 +585,11 @@ define(function () {
          */
 
         function _fireSubscribers (channel, payload) {
-            if (_pubsub_observers[channel]) {
-                for (var i = 0, len = _pubsub_observers[channel].length; i < len; i++) {
+            if (_pubsubObservers[channel]) {
+                for (var i = 0, len = _pubsubObservers[channel].length; i < len; i++) {
                     // send immutable data that can't be modified by listeners
                     try {
-                        _pubsub_observers[channel][i](channel, JSON.parse(JSON.stringify(payload)));
+                        _pubsubObservers[channel][i](channel, JSON.parse(JSON.stringify(payload)));
                     } catch (E) {
                     }
                 }
@@ -657,7 +658,7 @@ define(function () {
          * @return {number} 32-bit positive integer hash
          */
 
-        function murmurhash2_32_gc (str, seed) {
+        function MurmurHash2 (str, seed) {
             var
                 l = str.length,
                 h = seed ^ l,
@@ -679,9 +680,11 @@ define(function () {
 
             switch (l) {
                 case 3:
-                    h ^= (str.charCodeAt(i + 2) & 0xff) << 16; /* falls through */
+                    h ^= (str.charCodeAt(i + 2) & 0xff) << 16;
+                    /* falls through */
                 case 2:
-                    h ^= (str.charCodeAt(i + 1) & 0xff) << 8; /* falls through */
+                    h ^= (str.charCodeAt(i + 1) & 0xff) << 8;
+                    /* falls through */
                 case 1:
                     h ^= (str.charCodeAt(i) & 0xff);
                     h = (((h & 0xffff) * 0x5bd1e995) + ((((h >>> 16) * 0x5bd1e995) & 0xffff) << 16));
@@ -723,7 +726,7 @@ define(function () {
 
                 if (_XMLService.isXML(value)) {
                     value = {
-                        _is_xml: true,
+                        _isXml: true,
                         xml    : _XMLService.encode(value)
                     };
                 } else if (typeof value == 'function') {
@@ -735,7 +738,7 @@ define(function () {
 
                 _storage[key] = value;
 
-                _storage[metaKEY].CRC32[key] = '2.' + murmurhash2_32_gc(JSON.stringify(value), 0x9747b28c);
+                _storage[metaKEY].CRC32[key] = '2.' + new MurmurHash2(JSON.stringify(value), 0x9747b28c);
 
                 this.setTTL(key, options.TTL || 0); // also handles saving and _publishChange
                 _fireObservers(key, 'updated');
@@ -752,7 +755,7 @@ define(function () {
             get: function (key, def) {
                 _checkKey(key);
                 if (key in _storage) {
-                    if (_storage[key] && typeof _storage[key] == 'object' && _storage[key]._is_xml) {
+                    if (_storage[key] && typeof _storage[key] == 'object' && _storage[key]._isXml) {
                         return _XMLService.decode(_storage[key].xml);
                     } else {
                         return _storage[key];
@@ -890,7 +893,7 @@ define(function () {
              *                  since some chars may take several bytes)
              */
             storageSize: function () {
-                return _storage_size;
+                return _storageSize;
             },
 
             /**
@@ -961,10 +964,10 @@ define(function () {
                 if (!channel) {
                     throw new TypeError('Channel not defined');
                 }
-                if (!_pubsub_observers[channel]) {
-                    _pubsub_observers[channel] = [];
+                if (!_pubsubObservers[channel]) {
+                    _pubsubObservers[channel] = [];
                 }
-                _pubsub_observers[channel].push(callback);
+                _pubsubObservers[channel].push(callback);
             },
 
             /**
@@ -995,6 +998,5 @@ define(function () {
 
     })(Storage);
 
-
-    return new Storage;
+    return new Storage();
 });
